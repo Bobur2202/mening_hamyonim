@@ -1,0 +1,30 @@
+{% extends 'wallet/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center my-4">
+    <div class="col-12 col-md-6 col-lg-5">
+        <div class="card border-0 shadow-sm p-4 p-md-5 text-center">
+            <div class="bg-danger-subtle text-danger rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3" style="width: 64px; height: 64px;">
+                <i class="bi bi-trash fs-2"></i>
+            </div>
+            
+            <h4 class="fw-bold mb-2 text-dark">{{ title }}</h4>
+            <p class="text-muted small mb-4">{{ message }}</p>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-danger py-2 fw-semibold btn-rounded shadow-sm">
+                        <i class="bi bi-trash me-1"></i> Ha, o'chirilsin
+                    </button>
+                    <a href="{% url cancel_url %}" class="btn btn-light py-2 text-secondary btn-rounded">
+                        Bekor qilish
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

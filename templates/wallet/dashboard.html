@@ -1,0 +1,379 @@
+{% extends 'wallet/base.html' %}
+{% load wallet_tags %}
+
+{% block title %}Bosh sahifa (Dashboard){% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Moliya nazorati</h4>
+        <div class="d-inline-flex align-items-center bg-white border rounded-pill px-2 py-1 shadow-sm mt-1">
+            <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn btn-sm btn-link text-secondary text-decoration-none px-2 py-0" title="Oldingi oy">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+            <span class="fw-semibold px-2 text-dark small">
+                {{ current_month_name }} {{ current_year }}
+            </span>
+            <a href="?year={{ next_year }}&month={{ next_month }}" class="btn btn-sm btn-link text-secondary text-decoration-none px-2 py-0" title="Keyingi oy">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+            {% if not is_current_actual_month %}
+                <a href="{% url 'dashboard' %}" class="badge bg-primary text-white text-decoration-none ms-1 rounded-pill" title="Joriy oyga qaytish">
+                    Joriy oy
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'transaction_create' %}?type=expense" class="btn btn-danger btn-rounded d-inline-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-dash-circle"></i> Xarajat
+        </a>
+        <a href="{% url 'transaction_create' %}?type=income" class="btn btn-success btn-rounded d-inline-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-plus-circle"></i> Daromad
+        </a>
+    </div>
+</div>
+
+<!-- Asosiy ko'rsatkichlar kartalari (Stat Cards) -->
+<div class="row g-3 mb-4">
+    <!-- Umumiy Balans -->
+    <div class="col-12 col-md-4">
+        <div class="stat-card stat-card-balance p-4 shadow-sm h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-white-50 text-uppercase small fw-semibold">Umumiy Balans</span>
+                <span class="badge bg-white bg-opacity-25 rounded-pill"><i class="bi bi-wallet2"></i> Jami</span>
+            </div>
+            <h2 class="fw-bold mb-1">{{ total_balance|uzs }}</h2>
+            <div class="small text-white-50">
+                Barcha davrlar bo'yicha sof qoldiq
+            </div>
+        </div>
+    </div>
+
+    <!-- Joriy oy daromadi -->
+    <div class="col-6 col-md-4">
+        <div class="stat-card stat-card-income p-3 p-md-4 shadow-sm h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-white-50 text-uppercase small fw-semibold">Oylik Daromad</span>
+                <span class="badge bg-white bg-opacity-25 rounded-pill"><i class="bi bi-arrow-up-circle"></i></span>
+            </div>
+            <h3 class="fw-bold mb-1">{{ monthly_income|uzs }}</h3>
+            <div class="small text-white-50">{{ current_month_name }} oyidagi tushum</div>
+        </div>
+    </div>
+
+    <!-- Joriy oy xarajati -->
+    <div class="col-6 col-md-4">
+        <div class="stat-card stat-card-expense p-3 p-md-4 shadow-sm h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-white-50 text-uppercase small fw-semibold">Oylik Xarajat</span>
+                <span class="badge bg-white bg-opacity-25 rounded-pill"><i class="bi bi-arrow-down-circle"></i></span>
+            </div>
+            <h3 class="fw-bold mb-1">{{ monthly_expense|uzs }}</h3>
+            <div class="small text-white-50">{{ current_month_name }} oyidagi chiqim</div>
+        </div>
+    </div>
+</div>
+
+<!-- Oylik Budjet Nazorati -->
+<div class="card mb-4 border-0 shadow-sm">
+    <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div>
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-shield-check text-warning me-2"></i>Oylik xarajat budjeti nazorati
+                </h5>
+                <span class="text-muted small">{{ current_month_name }} oyi uchun limitlar</span>
+            </div>
+            <a href="{% url 'budgets' %}?year={{ current_year }}&month={{ current_month }}" class="btn btn-sm btn-outline-primary btn-rounded">
+                Budjetlarni boshqarish <i class="bi bi-chevron-right ms-1"></i>
+            </a>
+        </div>
+
+        {% if general_budget %}
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-semibold">Umumiy xarajat chegarasi:</span>
+                    <span class="fw-bold">{{ general_budget.spent_amount|uzs }} / {{ general_budget.amount|uzs }}</span>
+                </div>
+                <div class="progress" style="height: 14px; border-radius: 8px;">
+                    <div class="progress-bar {% if general_budget.is_exceeded %}bg-danger{% elif general_budget.percentage > 80 %}bg-warning{% else %}bg-primary{% endif %} progress-bar-striped progress-bar-animated" 
+                         role="progressbar" 
+                         style="width: {{ general_budget.percentage }}%;" 
+                         aria-valuenow="{{ general_budget.percentage }}" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100">
+                        {{ general_budget.percentage }}%
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between text-muted small mt-1">
+                    <span>
+                        {% if general_budget.is_exceeded %}
+                            <span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> Chegaradan {{ general_budget.remaining_amount|abs|uzs }} oshib ketdi!</span>
+                        {% else %}
+                            <span class="text-success"><i class="bi bi-check-circle"></i> Qolgan budjet: <strong>{{ general_budget.remaining_amount|uzs }}</strong></span>
+                        {% endif %}
+                    </span>
+                    <span>Sarflangan: <strong>{{ general_budget.percentage }}%</strong></span>
+                </div>
+            </div>
+        {% else %}
+            <div class="alert alert-light border d-flex align-items-center justify-content-between py-2 px-3 mb-0">
+                <div class="small text-muted">
+                    <i class="bi bi-info-circle me-1"></i> {{ current_month_name }} oyi uchun umumiy xarajat budjeti hali belgilanmagan.
+                </div>
+                <a href="{% url 'budget_create' %}?year={{ current_year }}&month={{ current_month }}" class="btn btn-sm btn-primary btn-rounded">
+                    <i class="bi bi-plus-lg me-1"></i> Budjet belgilash
+                </a>
+            </div>
+        {% endif %}
+
+        {% if category_budgets %}
+            <hr class="my-3">
+            <h6 class="fw-semibold text-secondary small text-uppercase mb-3">Kategoriyalar bo'yicha alohida limitlar:</h6>
+            <div class="row g-2">
+                {% for b in category_budgets %}
+                    <div class="col-12 col-md-6">
+                        <div class="p-2 border rounded bg-light">
+                            <div class="d-flex justify-content-between small fw-semibold mb-1">
+                                <span>
+                                    <i class="bi {{ b.category.icon }} me-1" style="color: {{ b.category.color }};"></i>
+                                    {{ b.category.name }}
+                                </span>
+                                <span>{{ b.spent_amount|uzs }} / {{ b.amount|uzs }}</span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar {% if b.is_exceeded %}bg-danger{% elif b.percentage > 85 %}bg-warning{% else %}bg-info{% endif %}" 
+                                     style="width: {{ b.percentage }}%;"></div>
+                            </div>
+                            <div class="d-flex justify-content-between small text-muted mt-1" style="font-size: 0.75rem;">
+                                {% if b.is_exceeded %}
+                                    <span class="text-danger fw-bold">Oshib ketdi: {{ b.remaining_amount|abs|uzs }}</span>
+                                {% else %}
+                                    <span>Qoldi: {{ b.remaining_amount|uzs }}</span>
+                                {% endif %}
+                                <span>{{ b.percentage }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Grafiklar bo'limi (Chart.js) -->
+<div class="row g-3 mb-4">
+    <!-- Oxirgi 6 oylik dinamika (Bar Chart) -->
+    <div class="col-12 col-lg-7">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-bar-chart-line text-primary me-2"></i>Oxirgi 6 oylik daromad va xarajatlar
+                </h6>
+                <span class="badge bg-light text-secondary border">So'mda</span>
+            </div>
+            <div class="card-body p-4">
+                <div style="position: relative; height: 280px;">
+                    <canvas id="monthlyTrendsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kategoriyalar bo'yicha xarajatlar (Doughnut Chart) -->
+    <div class="col-12 col-lg-5">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-pie-chart text-danger me-2"></i>Kategoriyalar bo'yicha xarajat
+                </h6>
+                <span class="badge bg-light text-secondary border">{{ current_month_name }}</span>
+            </div>
+            <div class="card-body p-4 d-flex flex-column align-items-center justify-content-center">
+                <div style="position: relative; height: 240px; width: 100%;">
+                    <canvas id="categoryExpenseChart"></canvas>
+                </div>
+                <div id="noExpenseAlert" class="text-center text-muted small my-auto d-none">
+                    <i class="bi bi-emoji-smile fs-2 d-block mb-1 text-secondary"></i>
+                    Bu oyda hali xarajatlar mavjud emas
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Oxirgi operatsiyalar -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-0 pt-4 px-4 pb-2 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0 text-dark">
+            <i class="bi bi-clock-history text-secondary me-2"></i>Oxirgi operatsiyalar
+        </h6>
+        <a href="{% url 'transactions' %}" class="btn btn-sm btn-outline-secondary btn-rounded">
+            Barcha operatsiyalar <i class="bi bi-arrow-right ms-1"></i>
+        </a>
+    </div>
+    <div class="card-body p-0">
+        {% if recent_transactions %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small text-uppercase text-secondary">
+                        <tr>
+                            <th class="ps-4">Sana</th>
+                            <th>Kategoriya</th>
+                            <th>Izoh</th>
+                            <th class="text-end pe-4">Summa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tx in recent_transactions %}
+                            <tr>
+                                <td class="ps-4 text-nowrap text-muted small">
+                                    {{ tx.date|date:"d.m.Y" }}
+                                </td>
+                                <td>
+                                    {% if tx.category %}
+                                        <span class="category-badge" style="background-color: {{ tx.category.color }}1a; color: {{ tx.category.color }};">
+                                            <i class="bi {{ tx.category.icon }}"></i> {{ tx.category.name }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-light text-secondary border">Kategoriyasiz</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="fw-semibold text-truncate" style="max-width: 250px;">
+                                        {{ tx.description|default:"Izoh yo'q" }}
+                                    </div>
+                                </td>
+                                <td class="text-end pe-4 text-nowrap">
+                                    {% if tx.type == 'income' %}
+                                        <span class="amount-income">+{{ tx.amount|uzs }}</span>
+                                    {% else %}
+                                        <span class="amount-expense">-{{ tx.amount|uzs }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                Hozircha operatsiyalar mavjud emas. Yangi operatsiya qo'shing!
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // 1. Oxirgi 6 oylik daromad va xarajat grafikasi
+        const trendsCtx = document.getElementById('monthlyTrendsChart');
+        if (trendsCtx) {
+            const labels = {{ chart_trends_labels|safe }};
+            const incomeData = {{ chart_trends_income|safe }};
+            const expenseData = {{ chart_trends_expense|safe }};
+
+            new Chart(trendsCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Daromad',
+                            data: incomeData,
+                            backgroundColor: 'rgba(16, 185, 129, 0.85)',
+                            borderColor: '#10b981',
+                            borderWidth: 1,
+                            borderRadius: 6,
+                        },
+                        {
+                            label: 'Xarajat',
+                            data: expenseData,
+                            backgroundColor: 'rgba(239, 68, 68, 0.85)',
+                            borderColor: '#ef4444',
+                            borderWidth: 1,
+                            borderRadius: 6,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + Number(context.raw).toLocaleString('uz-UZ') + ' so\'m';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    if (value >= 1000000) return (value / 1000000).toFixed(1) + ' mln';
+                                    if (value >= 1000) return (value / 1000).toFixed(0) + ' ming';
+                                    return value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 2. Kategoriya bo'yicha xarajatlar diagrammasi
+        const catCtx = document.getElementById('categoryExpenseChart');
+        const catLabels = {{ chart_categories_labels|safe }};
+        const catData = {{ chart_categories_data|safe }};
+        const catColors = {{ chart_categories_colors|safe }};
+
+        if (catCtx) {
+            if (catData.length === 0) {
+                document.getElementById('noExpenseAlert').classList.remove('d-none');
+                catCtx.style.display = 'none';
+            } else {
+                new Chart(catCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: catLabels,
+                        datasets: [{
+                            data: catData,
+                            backgroundColor: catColors.length ? catColors : ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff',
+                            hoverOffset: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { boxWidth: 12, padding: 12, font: { size: 11 } }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const val = Number(context.raw).toLocaleString('uz-UZ');
+                                        return ' ' + context.label + ': ' + val + ' so\'m';
+                                    }
+                                }
+                            }
+                        },
+                        cutout: '65%'
+                    }
+                });
+            }
+        }
+    });
+</script>
+{% endblock %}

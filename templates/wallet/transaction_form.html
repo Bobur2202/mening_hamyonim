@@ -1,0 +1,164 @@
+{% extends 'wallet/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center my-3">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card border-0 shadow-sm p-4 p-md-5">
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <div>
+                    <h4 class="fw-bold mb-1 text-dark">{{ title }}</h4>
+                    <p class="text-muted small mb-0">Summa, kategoriya va sanani kiriting</p>
+                </div>
+                <a href="{% url 'transactions' %}" class="btn btn-outline-secondary btn-sm btn-rounded">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+
+            {% if form.errors %}
+                <div class="alert alert-danger py-2 px-3 small mb-4">
+                    <i class="bi bi-exclamation-circle-fill me-1"></i> Iltimos, quyidagi xatoliklarni to'g'rilang:
+                    <ul class="mb-0 mt-1 ps-3">
+                        {% for field in form %}
+                            {% for error in field.errors %}
+                                <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                        {% for error in form.non_field_errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            <form method="post" novalidate id="transactionForm">
+                {% csrf_token %}
+
+                <!-- Operatsiya turi -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-secondary">{{ form.type.label }}</label>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="type" id="type_expense" value="expense" {% if form.type.value == 'expense' or not form.type.value %}checked{% endif %}>
+                            <label class="btn btn-outline-danger w-100 py-2 fw-semibold" for="type_expense">
+                                <i class="bi bi-dash-circle me-1"></i> Xarajat
+                            </label>
+                        </div>
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="type" id="type_income" value="income" {% if form.type.value == 'income' %}checked{% endif %}>
+                            <label class="btn btn-outline-success w-100 py-2 fw-semibold" for="type_income">
+                                <i class="bi bi-plus-circle me-1"></i> Daromad
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summa -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-secondary">{{ form.amount.label }}</label>
+                    <div class="input-group input-group-lg">
+                        {{ form.amount }}
+                        <span class="input-group-text bg-light fw-bold text-secondary">so'm</span>
+                    </div>
+                    <!-- Tezkor summa kiritish tugmalari -->
+                    <div class="d-flex flex-wrap gap-1 mt-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm quick-amt" data-val="50000">+50 ming</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm quick-amt" data-val="100000">+100 ming</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm quick-amt" data-val="500000">+500 ming</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm quick-amt" data-val="1000000">+1 mln</button>
+                        <button type="button" class="btn btn-outline-danger btn-sm clear-amt" title="Summani tozalash"><i class="bi bi-x-circle"></i></button>
+                    </div>
+                </div>
+
+                <!-- Kategoriya -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label fw-semibold text-secondary mb-0">{{ form.category.label }}</label>
+                        <a href="{% url 'category_create' %}" class="small text-primary text-decoration-none">
+                            <i class="bi bi-plus-circle"></i> Yangi kategoriya
+                        </a>
+                    </div>
+                    {{ form.category }}
+                </div>
+
+                <!-- Sana -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-secondary">{{ form.date.label }}</label>
+                    {{ form.date }}
+                </div>
+
+                <!-- Izoh -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold text-secondary">{{ form.description.label }}</label>
+                    {{ form.description }}
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary py-2 fw-semibold btn-rounded shadow-sm">
+                        <i class="bi bi-check-lg me-1"></i> {{ btn_text }}
+                    </button>
+                    <a href="{% url 'transactions' %}" class="btn btn-light py-2 text-secondary btn-rounded">
+                        Bekor qilish
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const typeRadios = document.querySelectorAll('input[name="type"]');
+        const categorySelect = document.getElementById('id_category');
+        const amountInput = document.getElementById('id_amount');
+        const initialSelectedCat = "{{ form.category.value|default:'' }}";
+
+        // Tezkor summa tugmalari
+        document.querySelectorAll('.quick-amt').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const addVal = parseFloat(this.getAttribute('data-val')) || 0;
+                const currentVal = parseFloat(amountInput.value) || 0;
+                amountInput.value = (currentVal + addVal).toFixed(0);
+            });
+        });
+
+        const clearBtn = document.querySelector('.clear-amt');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                amountInput.value = '';
+            });
+        }
+
+        function filterCategories(selectedType) {
+            fetch(`/api/categories/?type=${selectedType}`)
+                .then(response => response.json())
+                .then(data => {
+                    const currentVal = categorySelect.value || initialSelectedCat;
+                    categorySelect.innerHTML = '<option value="">--- Kategoriyani tanlang ---</option>';
+                    data.categories.forEach(cat => {
+                        const opt = document.createElement('option');
+                        opt.value = cat.id;
+                        opt.textContent = cat.name;
+                        if (String(cat.id) === String(currentVal)) {
+                            opt.selected = true;
+                        }
+                        categorySelect.appendChild(opt);
+                    });
+                })
+                .catch(err => console.error("Kategoriyalarni yuklashda xatolik:", err));
+        }
+
+        typeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                filterCategories(this.value);
+            });
+            if (radio.checked) {
+                filterCategories(radio.value);
+            }
+        });
+    });
+</script>
+{% endblock %}

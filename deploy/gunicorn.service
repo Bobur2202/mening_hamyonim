@@ -1,0 +1,16 @@
+[Unit]
+Description=gunicorn daemon for Mening Hamyonim
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/mening_hamyonim
+ExecStart=/var/www/mening_hamyonim/venv/bin/gunicorn \
+          --access-logfile - \
+          --workers 3 \
+          --bind unix:/run/gunicorn_hamyonim.sock \
+          config.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
